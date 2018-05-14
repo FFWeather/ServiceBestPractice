@@ -1,7 +1,10 @@
 package com.example.linlinshi.servicebestpractice;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +20,7 @@ import okhttp3.Response;
  */
 
 public class DownloadTask extends AsyncTask<String, Integer, Integer> {
+    private static final String TAG = "DownloadTask";
     public final static int TYPE_SUCCESS = 0;
     public final static int TYPE_FAILED = 1;
     public final static int TYPE_PAUSED = 2;
@@ -39,6 +43,7 @@ public class DownloadTask extends AsyncTask<String, Integer, Integer> {
         try {
             long downloadedLength = 0;
             String downloadUrl = strings[0];
+
             String filename = downloadUrl.substring(downloadUrl.lastIndexOf("/"));
             String directory = Environment.getExternalStoragePublicDirectory(Environment
                     .DIRECTORY_DOWNLOADS).getPath();
@@ -47,30 +52,30 @@ public class DownloadTask extends AsyncTask<String, Integer, Integer> {
                 downloadedLength = file.length();
             }
             long contentLength = getContentLength(downloadUrl);
-                        if (contentLength == 0) {
-                            return TYPE_FAILED;
-                        } else if (contentLength == downloadedLength) {
-                            return TYPE_SUCCESS;
-                        }
-                        OkHttpClient client = new OkHttpClient();
-                        Request request = new Request.Builder()
-                                .addHeader("RANGE", "bytes=" + downloadedLength + "-")
-                                .url(downloadUrl)
-                                .build();
-                        Response response = client.newCall(request).execute();
-                        if (response != null) {
-                            is = response.body().byteStream();
-                            savedFile = new RandomAccessFile(file, "rw");
-                            savedFile.seek(downloadedLength);
-                            byte[] b = new byte[1024];
-                            int total = 0;
-                            int len;
-                            while ((len = is.read(b)) != -1) {
-                                if (isCanceled) {
-                                    return TYPE_CANCELED;
-                                } else if (isPaused) {
-                                    return TYPE_PAUSED;
-                                } else {
+            if (contentLength == 0) {
+                return TYPE_FAILED;
+            } else if (contentLength == downloadedLength) {
+                return TYPE_SUCCESS;
+            }
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .addHeader("RANGE", "bytes=" + downloadedLength + "-")
+                    .url(downloadUrl)
+                    .build();
+            Response response = client.newCall(request).execute();
+            if (response != null) {
+                is = response.body().byteStream();
+                savedFile = new RandomAccessFile(file, "rw");
+                savedFile.seek(downloadedLength);
+                byte[] b = new byte[1024];
+                int total = 0;
+                int len;
+                while ((len = is.read(b)) != -1) {
+                    if (isCanceled) {
+                        return TYPE_CANCELED;
+                    } else if (isPaused) {
+                        return TYPE_PAUSED;
+                    } else {
                         total += len;
                         savedFile.write(b, 0, len);
                         int progress = (int) ((total + downloadedLength) * 100 / contentLength);
